@@ -1,38 +1,49 @@
-name: CI with Caching
+name: CI with Dependency Caching
 
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
-  build-with-cache:
+  test-with-cache:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v5
-      
-      - name: Create virtual environment
-        run: uv venv
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-      - name: Cache uv dependencies
-        uses: actions/cache@v4
-        id: cache-uv # Give the step an id to check its output
-        with:
-          path: ~/.cache/uv
-          key: cache-7845754
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      id: cache-dependencies
+      with:
+        path: |
+          ~/.cache/pip
+          **/__pycache__
+        key: cache-4947e41-${{ runner.os }}-python-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          cache-4947e41-${{ runner.os }}-python-
 
-      - name: Install dependencies
-        run: uv pip install -r requirements.txt
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
-      - name: prime-cache-7845754
-        run: |
-          if [[ "${{ steps.cache-uv.outputs.cache-hit }}" == "true" ]]; then
-            echo "Cache hit! Dependencies were restored."
-          else
-            echo "Cache miss. Dependencies were installed and cache will be saved."
-          fi
+    - name: Run tests
+      run: |
+        python -c "import requests, numpy, pandas, flask; print('All imports successful!')"
+
+    - name: prime-cache-4947e41
+      run: |
+        if [[ "${{ steps.cache-dependencies.outputs.cache-hit }}" == 'true' ]]; then
+          echo "✅ Cache hit! Dependencies were restored from cache."
+        else
+          echo "🔄 Cache miss. Dependencies installed and cached for future runs."
+        fi
