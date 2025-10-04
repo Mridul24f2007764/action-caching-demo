@@ -1,0 +1,59 @@
+name: Cache Dependencies Example
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --- Caching Step ---
+      - name: Cache dependencies (prime-cache-4947e41)
+        id: prime-cache-4947e41
+        uses: actions/cache@v4
+        with:
+          # The key must be unique to the content being cached.
+          # We use a static key 'cache-4947e41' as requested, but in a real project
+          # you would typically include a hash of a dependency file (e.g., package-lock.json).
+          key: cache-4947e41
+          # The path is crucial and must be set to the location of your dependencies.
+          # *** REPLACE THIS PATH with the actual directory you want to cache (e.g., node_modules) ***
+          path: |
+            ~/.npm
+            # Example for Node.js:
+            # node_modules
+            # Example for Python:
+            # ~/.cache/pip
+            # Example for Ruby:
+            # vendor/bundle
+
+      # --- Echo Step ---
+      - name: Report Cache Hit/Miss
+        run: |
+          if ${{ steps.prime-cache-4947e41.outputs.cache-hit == 'true' }}; then
+            echo "✅ CACHE HIT: Dependencies loaded from cache-447e41."
+          else
+            echo "❌ CACHE MISS: No cache found for cache-447e41. Dependencies will be installed."
+          fi
+
+      # --- Installation Step (for first run/cache miss) ---
+      # You would replace this with the actual installation command for your project
+      - name: Install Dependencies (if cache missed)
+        if: steps.prime-cache-4947e41.outputs.cache-hit != 'true'
+        run: |
+          echo "Simulating dependency installation..."
+          # Replace 'npm install' or 'pip install -r requirements.txt' with your command.
+          mkdir -p node_modules
+          touch node_modules/dummy_dependency.txt
+          echo "Installation complete."
+
+      - name: Check cached directory content (optional)
+        run: |
+          echo "Contents of the cached directory:"
+          ls -F node_modules
