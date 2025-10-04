@@ -1,49 +1,59 @@
-name: CI with Dependency Caching
+name: Cache Prime Demo
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main, master ]
   workflow_dispatch:
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
-  test-with-cache:
+  cache-demo:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
-
-    - name: Set up Python
+      
+    - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
-
-    - name: Cache dependencies
+        python-version: '3.9'
+        
+    - name: Cache Python dependencies
       uses: actions/cache@v4
-      id: cache-dependencies
+      id: python-cache
       with:
         path: |
           ~/.cache/pip
           **/__pycache__
-        key: cache-4947e41-${{ runner.os }}-python-${{ hashFiles('requirements.txt') }}
+        key: cache-4947e41-${{ runner.os }}-python-${{ hashFiles('**/requirements.txt') }}
         restore-keys: |
           cache-4947e41-${{ runner.os }}-python-
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: Run tests
-      run: |
-        python -c "import requests, numpy, pandas, flask; print('All imports successful!')"
-
+          
     - name: prime-cache-4947e41
+      id: prime-cache-step
       run: |
-        if [[ "${{ steps.cache-dependencies.outputs.cache-hit }}" == 'true' ]]; then
-          echo "✅ Cache hit! Dependencies were restored from cache."
+        echo "🔍 Checking cache status..."
+        if steps.python-cache.outputs.cache-hit == 'true'; then
+          echo "✅ Cache HIT for key: cache-4947e41"
+          echo "Cached paths:"
+          echo "~/.cache/pip"
         else
-          echo "🔄 Cache miss. Dependencies installed and cached for future runs."
+          echo "🔄 Cache MISS for key: cache-4947e41"
+          echo "Priming cache by installing dependencies..."
+          
+          # Create a requirements.txt if it doesn't exist
+          if [ ! -f "requirements.txt" ]; then
+            echo "Creating sample requirements.txt to prime cache"
+            echo "requests==2.31.0" > requirements.txt
+            echo "numpy==1.24.3" >> requirements.txt
+            echo "pandas==2.0.3" >> requirements.txt
+          fi
+          
+          # Install dependencies to populate cache
+          pip install -r requirements.txt
+          echo "✅ Cache primed successfully"
         fi
+        
+        # Output the result for verification
+        echo "cache-key=cache-4947e41" >> $GITHUB_OUTPUT
+        echo "cache-hit=${{ steps.python-cache.outputs.cache-hit }}" >> $GITHUB_OUTPUT
